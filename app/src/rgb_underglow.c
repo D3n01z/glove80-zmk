@@ -192,11 +192,16 @@ static void zmk_rgb_underglow_effect_swirl(void) {
 
 static int zmk_led_generate_status(void);
 
+static void valdur_indicate_custom_layers(void);
+
 static void zmk_led_write_pixels(void) {
     static struct led_rgb led_buffer[STRIP_NUM_PIXELS];
     int bat0 = zmk_battery_state_of_charge();
     int blend = 0;
     int reset_ext_power = 0;
+
+    valdur_indicate_custom_layers();
+
     if (state.status_active) {
         blend = zmk_led_generate_status();
     }
@@ -269,6 +274,7 @@ static void zmk_led_write_pixels(void) {
 
 #if !UNDERGLOW_INDICATORS_ENABLED
 static int zmk_led_generate_status(void) { return 0; }
+static void valdur_indicate_custom_layers(void) {}
 #else
 
 const uint8_t underglow_layer_state[] = DT_PROP(UNDERGLOW_INDICATORS, layer_state);
@@ -283,18 +289,71 @@ const uint8_t underglow_bat_rhs[] = DT_PROP(UNDERGLOW_INDICATORS, bat_rhs);
         b : (CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX * (B)) / 0xff                                        \
     })
 const struct led_rgb red = HEXRGB(0xff, 0x00, 0x00);
+const struct led_rgb orange = HEXRGB(0xff, 0x88, 0x00);
 const struct led_rgb yellow = HEXRGB(0xff, 0xff, 0x00);
 const struct led_rgb green = HEXRGB(0x00, 0xff, 0x00);
-const struct led_rgb dull_green = HEXRGB(0x00, 0xff, 0x68);
+const struct led_rgb nice_blue = HEXRGB(0x00, 0xbe, 0xff);
 const struct led_rgb magenta = HEXRGB(0xff, 0x00, 0xff);
 const struct led_rgb white = HEXRGB(0xff, 0xff, 0xff);
 const struct led_rgb lilac = HEXRGB(0x6b, 0x1f, 0xce);
+
+/*
+  MoErgo 40 LEDs
+  34 28 22 16 10
+  35 29 23 17 11 6
+  36 30 24 18 12 7
+  37 31 25 19 13 8
+  38 32 26 20 14 9
+  39 33 27 21 15
+                0 1 2
+                3 4 5
+*/
+
+static void valdur_indicate_custom_layers(void) {
+    uint8_t gaming_layer = 28;
+    uint8_t leftnav_layer = 2;
+    if (zmk_keymap_layer_active(gaming_layer)) {
+        // wsad
+        pixels[18] = red;
+        pixels[25] = red;
+        pixels[19] = red;
+        pixels[13] = red;
+
+    }
+    // else if (zmk_keymap_layer_active(leftnav_layer)) {
+    //
+    //     // arrows
+    //     pixels[18] = yellow;
+    //     pixels[25] = yellow;
+    //     pixels[19] = yellow;
+    //     pixels[13] = yellow;
+    //
+    //     // ctrl arrows
+    //     pixels[8] = orange;
+    //     pixels[31] = orange;
+    //
+    //     // home, end, pgup, pgdn
+    //     pixels[17] = nice_blue;
+    //     pixels[20] = nice_blue;
+    //     pixels[24] = nice_blue;
+    //     pixels[12] = nice_blue;
+    //
+    //     // ctrl home, end
+    //     pixels[7] = lilac;
+    //     pixels[30] = lilac;
+    //
+    //     // enter, backspace, delete
+    //     pixels[14] = red;
+    //     pixels[26] = red;
+    //     pixels[32] = red;
+    // }
+}
 
 static void zmk_led_battery_level(int bat_level, const uint8_t *addresses, size_t addresses_len) {
     struct led_rgb bat_colour;
 
     if (bat_level > 40) {
-        bat_colour = green;
+        bat_colour = nice_blue;
     } else if (bat_level > 20) {
         bat_colour = yellow;
     } else {
@@ -348,16 +407,16 @@ static int zmk_led_generate_status(void) {
     zmk_hid_indicators_t led_flags = zmk_hid_indicators_get_current_profile();
 
     if (led_flags & ZMK_LED_CAPSLOCK_BIT)
-        status_pixels[DT_PROP(UNDERGLOW_INDICATORS, capslock)] = red;
+        status_pixels[DT_PROP(UNDERGLOW_INDICATORS, capslock)] = yellow;
     if (led_flags & ZMK_LED_NUMLOCK_BIT)
-        status_pixels[DT_PROP(UNDERGLOW_INDICATORS, numlock)] = red;
+        status_pixels[DT_PROP(UNDERGLOW_INDICATORS, numlock)] = yellow;
     if (led_flags & ZMK_LED_SCROLLLOCK_BIT)
-        status_pixels[DT_PROP(UNDERGLOW_INDICATORS, scrolllock)] = red;
+        status_pixels[DT_PROP(UNDERGLOW_INDICATORS, scrolllock)] = yellow;
 
     // LAYER STATUS
     for (uint8_t i = 0; i < DT_PROP_LEN(UNDERGLOW_INDICATORS, layer_state); i++) {
         if (zmk_keymap_layer_active(i))
-            status_pixels[underglow_layer_state[i]] = magenta;
+            status_pixels[underglow_layer_state[i]] = lilac;
     }
 
     struct zmk_endpoint_instance active_endpoint = zmk_endpoints_selected();
@@ -374,7 +433,7 @@ static int zmk_led_generate_status(void) {
             active_ble_profile_index == i) { // connected AND active
             status_pixels[ble_pixel] = white;
         } else if (status == 2) { // connected
-            status_pixels[ble_pixel] = dull_green;
+            status_pixels[ble_pixel] = nice_blue;
         } else if (status == 1) { // paired
             status_pixels[ble_pixel] = red;
         } else if (status == 0) { // unused
@@ -387,7 +446,7 @@ static int zmk_led_generate_status(void) {
         active_endpoint.transport == ZMK_TRANSPORT_USB) { // connected AND active
         status_pixels[DT_PROP(UNDERGLOW_INDICATORS, usb_state)] = white;
     } else if (usb_state == ZMK_USB_CONN_HID) { // connected
-        status_pixels[DT_PROP(UNDERGLOW_INDICATORS, usb_state)] = dull_green;
+        status_pixels[DT_PROP(UNDERGLOW_INDICATORS, usb_state)] = nice_blue;
     } else if (usb_state == ZMK_USB_CONN_POWERED) { // powered
         status_pixels[DT_PROP(UNDERGLOW_INDICATORS, usb_state)] = red;
     } else if (usb_state == ZMK_USB_CONN_NONE) { // disconnected
